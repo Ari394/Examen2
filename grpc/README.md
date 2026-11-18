@@ -1,4 +1,4 @@
-# Implementación de gRPC con Node.js — Datos en memoria
+# Implementación de gRPC con Node.js y MongoDB
 
 ## 1. ¿Qué es gRPC?
 
@@ -12,6 +12,8 @@ A diferencia de una API REST tradicional, gRPC permite que un cliente invoque m�
 - JavaScript
 - gRPC (`@grpc/grpc-js`)
 - Protocol Buffers (`@grpc/proto-loader`)
+- Mongoose
+- MongoDB
 - Archivos JSON de Northwind
 
 ## 3. Instalación y configuración
@@ -26,7 +28,7 @@ Se definió el servicio `ProductoService` en el archivo `productos.proto`, indic
 
 El servidor gRPC se configuró para escuchar solicitudes en el puerto `50051`.
 
-Para las pruebas se utilizaron los archivos JSON originales de Northwind, cargados directamente en memoria.
+Las consultas gRPC existentes utilizan los archivos JSON originales de Northwind cargados en memoria. Además, estos mismos datos se pueden importar a MongoDB mediante Mongoose.
 
 ## 4. Consultas implementadas
 
@@ -88,25 +90,41 @@ La consulta utiliza `.filter()` para seleccionar los proveedores de Estados Unid
 
 La comparación del país se realiza sin distinguir entre letras mayúsculas y minúsculas.
 
-## 5. Manejo de datos en memoria
+## 5. Datos JSON y persistencia en MongoDB
 
-Para realizar las consultas se utilizaron tres archivos JSON de Northwind:
+Los datos originales de Northwind se encuentran en tres archivos:
 
 - `Products.json`: contiene los 77 productos.
-- `Categories.json`: contiene las categorías de los productos.
+- `Categories.json`: contiene las 8 categorías de los productos.
 - `Suppliers.json`: contiene los 29 proveedores.
 
-Los archivos se encuentran dentro de la carpeta `src/data/`.
+Los archivos están en `src/data/`. Los módulos `productos.js`, `categorias.js` y `proveedores.js` siguen cargándolos en memoria para las consultas existentes.
 
-Se crearon los módulos `productos.js`, `categorias.js` y `proveedores.js` para cargar estos archivos mediante `require()`.
+Los modelos Mongoose están en `src/models/` y conservan los nombres y tipos originales de los campos. Los productos mantienen `CategoryID` y `SupplierID` como identificadores numéricos de sus relaciones.
 
-Los registros se almacenan en memoria durante la ejecución del servidor y se consultan utilizando los métodos `.map()` y `.filter()` de JavaScript.
+La importación crea o reemplaza registros por su identificador (`ProductID`, `CategoryID` o `SupplierID`), por lo que puede ejecutarse nuevamente sin duplicarlos. Las colecciones son `productos`, `categorias` y `proveedores`.
 
-**No se utiliza MongoDB ni ninguna otra conexión a una base de datos.** Esta implementación corresponde únicamente a las consultas gRPC con datos en memoria.
+## 6. Importar los datos a MongoDB
 
-## 6. Ejecución del proyecto
+Configura `MONGO_URI` en el archivo `.env` ubicado en la carpeta `grpc`. No publiques ni compartas el valor de esa variable.
 
-Para ejecutar el proyecto, abrir una terminal dentro de la carpeta `grpc`.
+Desde PowerShell, abre una terminal en `grpc` y ejecuta:
+
+```powershell
+node src/scripts/importJson.js
+```
+
+La salida debe indicar los documentos procesados en cada colección y terminar con `Importación de JSON completada.` Para comprobar los conteos desde Node.js sin mostrar la URI:
+
+```powershell
+node -e "const mongoose = require('mongoose'); (async () => { try { await require('./src/config/database')(); const Producto = require('./src/models/Producto'); const Categoria = require('./src/models/Categoria'); const Proveedor = require('./src/models/Proveedor'); console.log(JSON.stringify({ productos: await Producto.countDocuments(), categorias: await Categoria.countDocuments(), proveedores: await Proveedor.countDocuments() })); } catch { console.error('Verificación fallida'); process.exitCode = 1; } finally { await mongoose.disconnect().catch(() => { console.error('No se pudo cerrar la conexión'); process.exitCode = 1; }); } })();"
+```
+
+Para los JSON actuales se esperan `77` productos, `8` categorías y `29` proveedores.
+
+## 7. Ejecución del proyecto
+
+Para iniciar el servidor gRPC, MongoDB debe estar disponible:
 
 ### Iniciar el servidor
 
@@ -126,7 +144,7 @@ node src/client.js
 
 El cliente realiza las cinco consultas gRPC y muestra los resultados mediante `console.table()`.
 
-## 7. Resultados de las pruebas
+## 8. Resultados de las consultas en memoria
 
 Se realizaron pruebas de las cinco consultas utilizando los datos originales de Northwind.
 
@@ -140,10 +158,8 @@ Se realizaron pruebas de las cinco consultas utilizando los datos originales de 
 
 Todas las consultas se ejecutaron correctamente y mostraron los resultados esperados en la terminal.
 
-## 8. Alcance de la implementación
+## 9. Alcance de la implementación
 
-Esta implementación corresponde a la configuración inicial de gRPC y al desarrollo de consultas utilizando datos en memoria.
+Las consultas gRPC existentes obtienen, proyectan y filtran datos desde los módulos JSON en memoria. La importación a MongoDB está disponible para las siguientes operaciones de base de datos.
 
-Se desarrollaron los servicios, mensajes y métodos necesarios para obtener registros, seleccionar campos específicos y aplicar filtros.
-
-La conexión a una base de datos, las consultas JOIN, las operaciones CRUD, la paginación y la autenticación JWT corresponden a otras partes del proyecto y no forman parte de esta implementación.
+Las operaciones CRUD, las agregaciones, la paginación, el ordenamiento y la autenticación JWT aún no forman parte de esta implementación.
