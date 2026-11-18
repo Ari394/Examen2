@@ -144,7 +144,25 @@ node src/client.js
 
 El cliente realiza las cinco consultas gRPC y muestra los resultados mediante `console.table()`.
 
-## 8. Resultados de las consultas en memoria
+## 8. Consultas avanzadas con Aggregation Pipeline
+
+Se añadieron tres RPC a `ProductoService`, implementadas en `src/services/productoAggregationService.js`. Cada consulta parte de `productos` y combina colecciones por sus identificadores numéricos:
+
+- `ObtenerProductosConCategoria`: une `productos.CategoryID` con `categorias.CategoryID`.
+- `ObtenerProductosConProveedor`: une `productos.SupplierID` con `proveedores.SupplierID`.
+- `ObtenerProductosConCategoriaYProveedor`: realiza ambas uniones.
+
+Cada pipeline utiliza `$lookup` para relacionar las colecciones, `$unwind` para convertir la relación coincidente en un objeto y `$project` para devolver los campos originales seleccionados. Las relaciones se muestran dentro de `categoria` y `proveedor`. Si la consulta no encuentra productos, responde con `productos: []`; si MongoDB falla, responde con un error gRPC `INTERNAL`.
+
+El cliente ejecuta las tres pruebas con:
+
+```powershell
+node src/client.js
+```
+
+Para demostrarlo, inicia primero el servidor (`node src/server.js`) con MongoDB disponible y los JSON importados. Después ejecuta el cliente. Por ejemplo, el producto `Chai` (`ProductID: 1`) debe mostrar `Beverages` (`CategoryID: 1`) en la consulta de categoría y `Exotic Liquids` (`SupplierID: 1`) en la de proveedor. La consulta combinada muestra ambos objetos.
+
+## 9. Resultados de las consultas en memoria
 
 Se realizaron pruebas de las cinco consultas utilizando los datos originales de Northwind.
 
@@ -158,8 +176,8 @@ Se realizaron pruebas de las cinco consultas utilizando los datos originales de 
 
 Todas las consultas se ejecutaron correctamente y mostraron los resultados esperados en la terminal.
 
-## 9. Alcance de la implementación
+## 10. Alcance de la implementación
 
-Las consultas gRPC existentes obtienen, proyectan y filtran datos desde los módulos JSON en memoria. La importación a MongoDB está disponible para las siguientes operaciones de base de datos.
+Las cinco consultas gRPC existentes siguen usando los módulos JSON en memoria. Las consultas avanzadas nuevas usan agregaciones MongoDB; la importación de datos está documentada en la sección anterior.
 
-Las operaciones CRUD, las agregaciones, la paginación, el ordenamiento y la autenticación JWT aún no forman parte de esta implementación.
+Las operaciones CRUD, la paginación, el ordenamiento y la autenticación JWT aún no forman parte de esta implementación.

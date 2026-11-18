@@ -5,6 +5,7 @@ const path = require("path");
 
 const connectDatabase = require("./config/database");
 const productoService = require("./services/productoService");
+const productoAggregationService = require("./services/productoAggregationService");
 
 // Ruta del archivo .proto
 const PROTO_PATH = path.join(
@@ -33,7 +34,10 @@ const server = new grpc.Server();
 // Registrar las consultas
 server.addService(
   proto.ProductoService.service,
-  productoService
+  {
+    ...productoService,
+    ...productoAggregationService
+  }
 );
 
 // Iniciar el servidor

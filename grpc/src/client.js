@@ -76,3 +76,36 @@ client.FiltrarProveedores({ Country: "USA" }, (error, response) => {
   console.log("\nCONSULTA C2: PROVEEDORES DE USA");
   console.table(response.proveedores);
 });
+
+// CONSULTA D1: Productos con su categoria
+client.ObtenerProductosConCategoria({}, (error, response) => {
+  if (error) {
+    console.error("Error en consulta D1:", error.message);
+    return;
+  }
+
+  console.log("\nCONSULTA D1: PRODUCTOS CON CATEGORIA");
+  console.dir(response.productos, { depth: null });
+});
+
+// CONSULTA D2: Productos con su proveedor
+client.ObtenerProductosConProveedor({}, (error, response) => {
+  if (error) {
+    console.error("Error en consulta D2:", error.message);
+    return;
+  }
+
+  console.log("\nCONSULTA D2: PRODUCTOS CON PROVEEDOR");
+  console.dir(response.productos, { depth: null });
+});
+
+// CONSULTA D3: Productos con categoria y proveedor
+client.ObtenerProductosConCategoriaYProveedor({}, (error, response) => {
+  if (error) {
+    console.error("Error en consulta D3:", error.message);
+    return;
+  }
+
+  console.log("\nCONSULTA D3: PRODUCTOS CON CATEGORIA Y PROVEEDOR");
+  console.dir(response.productos, { depth: null });
+});
