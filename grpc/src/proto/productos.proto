@@ -1,0 +1,72 @@
+
+syntax = "proto3";
+
+package productos;
+
+service ProductoService {
+
+  // Consultar todos los productos
+  rpc ObtenerProductos (Vacio) returns (ListaProductos);
+
+  // Consultar campos especificos
+  rpc ObtenerCampos (Vacio) returns (ListaCampos);
+
+  // Consultar productos con filtros
+  rpc FiltrarProductos (FiltroProducto) returns (ListaProductos);
+
+rpc ObtenerCamposProveedores (Vacio) returns (ListaCamposProveedores);
+rpc FiltrarProveedores (FiltroProveedor) returns (ListaProveedores);
+
+}
+
+message Vacio {}
+
+message Producto {
+  int32 ProductID = 1;
+  string ProductName = 2;
+  int32 CategoryID = 3;
+  double UnitPrice = 4;
+  int32 UnitsInStock = 5;
+}
+
+message ListaProductos {
+  repeated Producto productos = 1;
+}
+
+message CamposProducto {
+  int32 ProductID = 1;
+  string ProductName = 2;
+  double UnitPrice = 3;
+}
+
+message ListaCampos {
+  repeated CamposProducto productos = 1;
+}
+
+message FiltroProducto {
+  int32 CategoryID = 1;
+}
+
+message CamposProveedor {
+  int32 SupplierID = 1;
+  string CompanyName = 2;
+  string Country = 3;
+}
+
+message ListaCamposProveedores {
+  repeated CamposProveedor proveedores = 1;
+}
+
+message Proveedor {
+  int32 SupplierID = 1;
+  string CompanyName = 2;
+  string Country = 3;
+}
+
+message ListaProveedores {
+  repeated Proveedor proveedores = 1;
+}
+
+message FiltroProveedor {
+  string Country = 1;
+}
