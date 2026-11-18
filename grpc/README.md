@@ -242,6 +242,35 @@ node src/client.js
 
 Para demostrarlo, inicia MongoDB y el servidor, ejecuta el cliente y muestra en la salida `pagina`, `limite`, `totalRegistros`, `totalPaginas`, el campo y la dirección aplicados junto con las filas ordenadas. Una solicitud con un campo fuera de la lista permitida o con límite mayor a 100 debe responder `INVALID_ARGUMENT`.
 
-## 12. Alcance pendiente
+## 12. Autenticación JWT en gRPC
 
-Las cinco consultas gRPC originales siguen usando los módulos JSON en memoria. Las consultas avanzadas, CRUD, paginación y ordenamiento utilizan MongoDB. La autenticación JWT aún no forma parte de esta implementación.
+El servidor usa un interceptor de `@grpc/grpc-js` (`src/middleware/jwtAuthInterceptor.js`). Para iniciar, configura `JWT_SECRET` con un valor aleatorio privado y `JWT_EXPIRES_IN` con una duración aceptada por `jsonwebtoken`, por ejemplo `15m` o `1h`, en `grpc/.env`. No incluyas el secreto ni los tokens en capturas, commits o mensajes.
+
+`src/services/jwtService.js` exporta `generateToken(payload)` y `verifyToken(token)`. Los tokens se firman con HS256, incluyen la expiración configurada y se validan con el mismo algoritmo.
+
+### Métodos públicos y protegidos
+
+Son públicos las cinco consultas originales de Persona 1: `ObtenerProductos`, `ObtenerCampos`, `ObtenerCamposProveedores`, `FiltrarProductos` y `FiltrarProveedores`.
+
+Requieren un token Bearer las tres consultas avanzadas (`ObtenerProductosConCategoria`, `ObtenerProductosConProveedor`, `ObtenerProductosConCategoriaYProveedor`), los cuatro métodos CRUD y `ConsultarProductosPaginados`. Los métodos no incluidos en la lista pública también requieren autenticación.
+
+El cliente adjunta el token en la metadata gRPC `authorization` con el formato `Bearer <token>`. Sin token, con token inválido o expirado, el servidor responde `UNAUTHENTICATED` sin ejecutar el handler protegido.
+
+### Probar la autenticación
+
+```powershell
+npm test
+node src/server.js
+```
+
+En otra terminal, ejecuta:
+
+```powershell
+node src/client.js
+```
+
+El cliente muestra las pruebas `JWT SIN TOKEN`, `JWT INCORRECTO` y `JWT VÁLIDO`. La suite `jwtAuth.test.js` levanta un servidor gRPC real en un puerto local temporal y verifica que las solicitudes sin token, inválidas y expiradas sean rechazadas, que las públicas sigan respondiendo y que el token válido llegue al handler protegido. Las llamadas protegidas del cliente generan un token localmente para esta demostración; en producción, nunca distribuyas `JWT_SECRET` con un cliente: este debe obtener tokens de un servicio de autenticación confiable.
+
+## 13. Alcance pendiente
+
+Las cinco consultas gRPC originales siguen usando los módulos JSON en memoria. Las consultas avanzadas, CRUD, paginación, ordenamiento y autenticación JWT están implementadas.

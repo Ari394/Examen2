@@ -8,6 +8,7 @@ const productoService = require("./services/productoService");
 const productoAggregationService = require("./services/productoAggregationService");
 const productoCrudService = require("./services/productoCrudService");
 const productoPaginacionService = require("./services/productoPaginacionService");
+const { createJwtAuthInterceptor } = require("./middleware/jwtAuthInterceptor");
 
 // Ruta del archivo .proto
 const PROTO_PATH = path.join(
@@ -31,7 +32,9 @@ const proto = grpc.loadPackageDefinition(
 ).productos;
 
 // Crear el servidor
-const server = new grpc.Server();
+const server = new grpc.Server({
+  interceptors: [createJwtAuthInterceptor()]
+});
 
 // Registrar las consultas
 server.addService(

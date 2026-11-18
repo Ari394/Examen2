@@ -15,12 +15,21 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 
 const proto = grpc.loadPackageDefinition(packageDefinition).productos;
+const { generateToken } = require("./services/jwtService");
 
 // Crear cliente gRPC
 const client = new proto.ProductoService(
   "localhost:50051",
   grpc.credentials.createInsecure()
 );
+
+function crearMetadataAutorizacion(
+  token = generateToken({ sub: "grpc-client-demo" })
+) {
+  const metadata = new grpc.Metadata();
+  metadata.set("authorization", `Bearer ${token}`);
+  return metadata;
+}
 
 // CONSULTA A: Todos los productos
 client.ObtenerProductos({}, (error, response) => {
@@ -78,41 +87,53 @@ client.FiltrarProveedores({ Country: "USA" }, (error, response) => {
 });
 
 // CONSULTA D1: Productos con su categoria
-client.ObtenerProductosConCategoria({}, (error, response) => {
-  if (error) {
-    console.error("Error en consulta D1:", error.message);
-    return;
-  }
+client.ObtenerProductosConCategoria(
+  {},
+  crearMetadataAutorizacion(),
+  (error, response) => {
+    if (error) {
+      console.error("Error en consulta D1:", error.message);
+      return;
+    }
 
-  console.log("\nCONSULTA D1: PRODUCTOS CON CATEGORIA");
-  console.dir(response.productos, { depth: null });
-});
+    console.log("\nCONSULTA D1: PRODUCTOS CON CATEGORIA");
+    console.dir(response.productos, { depth: null });
+  }
+);
 
 // CONSULTA D2: Productos con su proveedor
-client.ObtenerProductosConProveedor({}, (error, response) => {
-  if (error) {
-    console.error("Error en consulta D2:", error.message);
-    return;
-  }
+client.ObtenerProductosConProveedor(
+  {},
+  crearMetadataAutorizacion(),
+  (error, response) => {
+    if (error) {
+      console.error("Error en consulta D2:", error.message);
+      return;
+    }
 
-  console.log("\nCONSULTA D2: PRODUCTOS CON PROVEEDOR");
-  console.dir(response.productos, { depth: null });
-});
+    console.log("\nCONSULTA D2: PRODUCTOS CON PROVEEDOR");
+    console.dir(response.productos, { depth: null });
+  }
+);
 
 // CONSULTA D3: Productos con categoria y proveedor
-client.ObtenerProductosConCategoriaYProveedor({}, (error, response) => {
-  if (error) {
-    console.error("Error en consulta D3:", error.message);
-    return;
-  }
+client.ObtenerProductosConCategoriaYProveedor(
+  {},
+  crearMetadataAutorizacion(),
+  (error, response) => {
+    if (error) {
+      console.error("Error en consulta D3:", error.message);
+      return;
+    }
 
-  console.log("\nCONSULTA D3: PRODUCTOS CON CATEGORIA Y PROVEEDOR");
-  console.dir(response.productos, { depth: null });
-});
+    console.log("\nCONSULTA D3: PRODUCTOS CON CATEGORIA Y PROVEEDOR");
+    console.dir(response.productos, { depth: null });
+  }
+);
 
 function llamarCrud(metodo, request) {
   return new Promise((resolve, reject) => {
-    client[metodo](request, (error, response) => {
+    client[metodo](request, crearMetadataAutorizacion(), (error, response) => {
       if (error) {
         reject(error);
         return;
@@ -197,6 +218,7 @@ client.ConsultarProductosPaginados(
     campoOrdenamiento: "ProductID",
     orden: "ASCENDENTE"
   },
+  crearMetadataAutorizacion(),
   (error, response) => {
     if (error) {
       console.error("Error en paginación ascendente:", error.message);
@@ -223,6 +245,7 @@ client.ConsultarProductosPaginados(
     campoOrdenamiento: "UnitPrice",
     orden: "DESCENDENTE"
   },
+  crearMetadataAutorizacion(),
   (error, response) => {
     if (error) {
       console.error("Error en paginación descendente:", error.message);
@@ -241,3 +264,64 @@ client.ConsultarProductosPaginados(
     console.table(response.productos);
   }
 );
+
+function probarLlamadaConToken(metodo, request, token) {
+  const metadata = token
+    ? crearMetadataAutorizacion(token)
+    : new grpc.Metadata();
+
+  return new Promise(resolve => {
+    client[metodo](request, metadata, (error, response) => {
+      resolve({ error, response });
+    });
+  });
+}
+
+async function probarAutenticacion() {
+  const request = { ProductID: 0 };
+  const tokenValido = generateToken({ sub: "grpc-client-auth-test" });
+  const tokenIncorrecto = "token.incorrecto";
+
+  const sinToken = await probarLlamadaConToken(
+    "ConsultarProductos",
+    request,
+    null
+  );
+  console.log(
+    "\nJWT SIN TOKEN:",
+    sinToken.error && sinToken.error.code === grpc.status.UNAUTHENTICATED
+      ? "rechazado correctamente"
+      : "resultado inesperado"
+  );
+
+  const incorrecto = await probarLlamadaConToken(
+    "ConsultarProductos",
+    request,
+    tokenIncorrecto
+  );
+  console.log(
+    "JWT INCORRECTO:",
+    incorrecto.error && incorrecto.error.code === grpc.status.UNAUTHENTICATED
+      ? "rechazado correctamente"
+      : "resultado inesperado"
+  );
+
+  const valido = await probarLlamadaConToken(
+    "ConsultarProductos",
+    request,
+    tokenValido
+  );
+  if (!valido.error) {
+    console.log(
+      `JWT VÁLIDO: aceptado; productos consultados: ${valido.response.productos.length}`
+    );
+  } else if (valido.error.code !== grpc.status.UNAUTHENTICATED) {
+    console.log(
+      `JWT VÁLIDO: aceptado por autenticación; consulta respondió con gRPC ${valido.error.code}.`
+    );
+  } else {
+    console.log("JWT VÁLIDO: rechazado inesperadamente.");
+  }
+}
+
+probarAutenticacion();

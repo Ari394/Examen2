@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test src/services/productoCrudService.test.js src/services/productoPaginacionService.test.js"
+    "test": "node --test src/services/productoCrudService.test.js src/services/productoPaginacionService.test.js src/services/jwtAuth.test.js"
   },
   "keywords": [],
   "author": "",
