@@ -23,6 +23,7 @@ rpc CrearProducto (ProductoMongo) returns (RespuestaCRUDProducto);
 rpc ConsultarProductos (ConsultaProductosRequest) returns (RespuestaConsultaProductos);
 rpc ActualizarProducto (ProductoMongo) returns (RespuestaCRUDProducto);
 rpc EliminarProducto (IdentificadorProducto) returns (RespuestaCRUDProducto);
+rpc ConsultarProductosPaginados (SolicitudPaginacionProductos) returns (RespuestaPaginadaProductos);
 
 }
 
@@ -173,4 +174,26 @@ message RespuestaConsultaProductos {
   bool exito = 1;
   string mensaje = 2;
   repeated ProductoMongo productos = 3;
+}
+
+enum OrdenProductos {
+  ASCENDENTE = 0;
+  DESCENDENTE = 1;
+}
+
+message SolicitudPaginacionProductos {
+  int32 pagina = 1;
+  int32 limite = 2;
+  string campoOrdenamiento = 3;
+  OrdenProductos orden = 4;
+}
+
+message RespuestaPaginadaProductos {
+  repeated ProductoMongo productos = 1;
+  int32 pagina = 2;
+  int32 limite = 3;
+  int64 totalRegistros = 4;
+  int64 totalPaginas = 5;
+  string campoOrdenamiento = 6;
+  string orden = 7;
 }

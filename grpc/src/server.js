@@ -7,6 +7,7 @@ const connectDatabase = require("./config/database");
 const productoService = require("./services/productoService");
 const productoAggregationService = require("./services/productoAggregationService");
 const productoCrudService = require("./services/productoCrudService");
+const productoPaginacionService = require("./services/productoPaginacionService");
 
 // Ruta del archivo .proto
 const PROTO_PATH = path.join(
@@ -38,7 +39,8 @@ server.addService(
   {
     ...productoService,
     ...productoAggregationService,
-    ...productoCrudService
+    ...productoCrudService,
+    ...productoPaginacionService
   }
 );
 

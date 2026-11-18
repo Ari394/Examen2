@@ -198,6 +198,50 @@ Con MongoDB disponible y `MONGO_URI` configurada, desde la carpeta `grpc`:
 
 Para documentar la demostración, captura: (1) el servidor conectado a MongoDB y escuchando en el puerto gRPC; (2) la respuesta exitosa de creación y la consulta del producto guardado, con su `ProductID`; (3) la respuesta de actualización y la consulta donde se ve el nombre o precio cambiado; (4) la eliminación exitosa y la respuesta `NOT_FOUND` al consultar el producto después de eliminarlo.
 
-## 11. Alcance pendiente
+## 11. Paginación y ordenamiento en MongoDB
 
-Las cinco consultas gRPC originales siguen usando los módulos JSON en memoria. Las consultas avanzadas nuevas usan agregaciones MongoDB. La paginación, el ordenamiento y la autenticación JWT aún no forman parte de esta implementación.
+El RPC `ConsultarProductosPaginados` está implementado en `src/services/productoPaginacionService.js`. `pagina` empieza en 1, `limite` debe estar entre 1 y 100, y el resultado incluye `totalRegistros` y `totalPaginas`. Si no se especifica un campo, ordena por `ProductID`; si no se especifica dirección, utiliza `ASCENDENTE`.
+
+Los únicos campos permitidos para ordenar son `ProductID`, `ProductName`, `SupplierID`, `CategoryID`, `QuantityPerUnit`, `UnitPrice`, `UnitsInStock` y `ReorderLevel`. La dirección debe ser `ASCENDENTE` o `DESCENDENTE`. Para que la paginación sea estable cuando el campo elegido tiene valores repetidos, se utiliza `ProductID` como desempate ascendente.
+
+Ejemplo de solicitud:
+
+```js
+{
+  pagina: 1,
+  limite: 2,
+  campoOrdenamiento: "UnitPrice",
+  orden: "DESCENDENTE"
+}
+```
+
+Con los 77 productos importados, una respuesta de ejemplo es:
+
+```js
+{
+  productos: [
+    { ProductID: 38, ProductName: "Côte de Blaye", UnitPrice: 263.5 },
+    { ProductID: 29, ProductName: "Thüringer Rostbratwurst", UnitPrice: 123.79 }
+  ],
+  pagina: 1,
+  limite: 2,
+  totalRegistros: "77",
+  totalPaginas: "39",
+  campoOrdenamiento: "UnitPrice",
+  orden: "DESCENDENTE"
+}
+```
+
+Los campos `totalRegistros` y `totalPaginas` son `int64`; con la configuración del cliente se reciben como cadenas. Si la página está fuera del rango, `productos` será una lista vacía y los totales seguirán indicando el tamaño de la colección. Una colección vacía devuelve cero registros y cero páginas.
+
+El cliente prueba página 1 con `ProductID` ascendente y página 2 con `UnitPrice` descendente:
+
+```powershell
+node src/client.js
+```
+
+Para demostrarlo, inicia MongoDB y el servidor, ejecuta el cliente y muestra en la salida `pagina`, `limite`, `totalRegistros`, `totalPaginas`, el campo y la dirección aplicados junto con las filas ordenadas. Una solicitud con un campo fuera de la lista permitida o con límite mayor a 100 debe responder `INVALID_ARGUMENT`.
+
+## 12. Alcance pendiente
+
+Las cinco consultas gRPC originales siguen usando los módulos JSON en memoria. Las consultas avanzadas, CRUD, paginación y ordenamiento utilizan MongoDB. La autenticación JWT aún no forma parte de esta implementación.

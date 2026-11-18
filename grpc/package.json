@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test src/services/productoCrudService.test.js"
+    "test": "node --test src/services/productoCrudService.test.js src/services/productoPaginacionService.test.js"
   },
   "keywords": [],
   "author": "",

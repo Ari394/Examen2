@@ -189,3 +189,55 @@ async function probarCrud() {
 }
 
 probarCrud();
+
+client.ConsultarProductosPaginados(
+  {
+    pagina: 1,
+    limite: 10,
+    campoOrdenamiento: "ProductID",
+    orden: "ASCENDENTE"
+  },
+  (error, response) => {
+    if (error) {
+      console.error("Error en paginación ascendente:", error.message);
+      return;
+    }
+
+    console.log("\nPAGINACIÓN: PRIMERA PÁGINA, ProductID ASCENDENTE");
+    console.log({
+      pagina: response.pagina,
+      limite: response.limite,
+      totalRegistros: response.totalRegistros,
+      totalPaginas: response.totalPaginas,
+      campoOrdenamiento: response.campoOrdenamiento,
+      orden: response.orden
+    });
+    console.table(response.productos);
+  }
+);
+
+client.ConsultarProductosPaginados(
+  {
+    pagina: 2,
+    limite: 5,
+    campoOrdenamiento: "UnitPrice",
+    orden: "DESCENDENTE"
+  },
+  (error, response) => {
+    if (error) {
+      console.error("Error en paginación descendente:", error.message);
+      return;
+    }
+
+    console.log("\nPAGINACIÓN: SEGUNDA PÁGINA, UnitPrice DESCENDENTE");
+    console.log({
+      pagina: response.pagina,
+      limite: response.limite,
+      totalRegistros: response.totalRegistros,
+      totalPaginas: response.totalPaginas,
+      campoOrdenamiento: response.campoOrdenamiento,
+      orden: response.orden
+    });
+    console.table(response.productos);
+  }
+);
