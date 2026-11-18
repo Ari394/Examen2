@@ -19,6 +19,10 @@ rpc FiltrarProveedores (FiltroProveedor) returns (ListaProveedores);
 rpc ObtenerProductosConCategoria (Vacio) returns (ListaProductosConCategoria);
 rpc ObtenerProductosConProveedor (Vacio) returns (ListaProductosConProveedor);
 rpc ObtenerProductosConCategoriaYProveedor (Vacio) returns (ListaProductosConCategoriaYProveedor);
+rpc CrearProducto (ProductoMongo) returns (RespuestaCRUDProducto);
+rpc ConsultarProductos (ConsultaProductosRequest) returns (RespuestaConsultaProductos);
+rpc ActualizarProducto (ProductoMongo) returns (RespuestaCRUDProducto);
+rpc EliminarProducto (IdentificadorProducto) returns (RespuestaCRUDProducto);
 
 }
 
@@ -137,4 +141,36 @@ message ProductoConCategoriaYProveedor {
 
 message ListaProductosConCategoriaYProveedor {
   repeated ProductoConCategoriaYProveedor productos = 1;
+}
+
+message ProductoMongo {
+  int32 ProductID = 1;
+  string ProductName = 2;
+  int32 SupplierID = 3;
+  int32 CategoryID = 4;
+  string QuantityPerUnit = 5;
+  double UnitPrice = 6;
+  int32 UnitsInStock = 7;
+  int32 ReorderLevel = 8;
+}
+
+message ConsultaProductosRequest {
+  // ProductID = 0 consulta todos; un valor positivo consulta uno.
+  int32 ProductID = 1;
+}
+
+message IdentificadorProducto {
+  int32 ProductID = 1;
+}
+
+message RespuestaCRUDProducto {
+  bool exito = 1;
+  string mensaje = 2;
+  ProductoMongo producto = 3;
+}
+
+message RespuestaConsultaProductos {
+  bool exito = 1;
+  string mensaje = 2;
+  repeated ProductoMongo productos = 3;
 }

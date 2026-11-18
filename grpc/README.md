@@ -176,8 +176,28 @@ Se realizaron pruebas de las cinco consultas utilizando los datos originales de 
 
 Todas las consultas se ejecutaron correctamente y mostraron los resultados esperados en la terminal.
 
-## 10. Alcance de la implementación
+## 10. CRUD gRPC sobre MongoDB
 
-Las cinco consultas gRPC existentes siguen usando los módulos JSON en memoria. Las consultas avanzadas nuevas usan agregaciones MongoDB; la importación de datos está documentada en la sección anterior.
+Se añadieron los métodos `CrearProducto`, `ConsultarProductos`, `ActualizarProducto` y `EliminarProducto` a `ProductoService`. Están implementados en `src/services/productoCrudService.js` y operan sobre el modelo Mongoose `Producto`.
 
-Las operaciones CRUD, la paginación, el ordenamiento y la autenticación JWT aún no forman parte de esta implementación.
+- `CrearProducto` valida todos los campos del modelo y rechaza `ProductID` duplicados.
+- `ConsultarProductos` consulta MongoDB. Envía `ProductID: 0` para listar todos los productos o un identificador positivo para consultar uno.
+- `ActualizarProducto` recibe el producto completo, valida sus campos y actualiza el registro existente identificado por `ProductID`.
+- `EliminarProducto` elimina por `ProductID`.
+
+Las respuestas indican éxito y describen la operación. Los parámetros inválidos reciben `INVALID_ARGUMENT`, los identificadores duplicados `ALREADY_EXISTS`, los registros inexistentes `NOT_FOUND` y los fallos de MongoDB `INTERNAL`.
+
+### Ejecutar y demostrar el CRUD
+
+Con MongoDB disponible y `MONGO_URI` configurada, desde la carpeta `grpc`:
+
+1. Importa los datos de referencia si todavía no lo hiciste: `node src/scripts/importJson.js`.
+2. Inicia el servidor en una terminal: `node src/server.js`.
+3. En otra terminal ejecuta `node src/client.js`. El cliente crea un producto con un `ProductID` temporal, lo consulta, lo actualiza, vuelve a consultarlo y finalmente lo elimina. También confirma que consultar el producto eliminado responde `NOT_FOUND`.
+4. Ejecuta las pruebas automatizadas: `npm test`. Estas prueban el ciclo CRUD, duplicados, validación y productos inexistentes usando un almacenamiento simulado.
+
+Para documentar la demostración, captura: (1) el servidor conectado a MongoDB y escuchando en el puerto gRPC; (2) la respuesta exitosa de creación y la consulta del producto guardado, con su `ProductID`; (3) la respuesta de actualización y la consulta donde se ve el nombre o precio cambiado; (4) la eliminación exitosa y la respuesta `NOT_FOUND` al consultar el producto después de eliminarlo.
+
+## 11. Alcance pendiente
+
+Las cinco consultas gRPC originales siguen usando los módulos JSON en memoria. Las consultas avanzadas nuevas usan agregaciones MongoDB. La paginación, el ordenamiento y la autenticación JWT aún no forman parte de esta implementación.
