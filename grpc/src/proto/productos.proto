@@ -16,6 +16,14 @@ service ProductoService {
 
 rpc ObtenerCamposProveedores (Vacio) returns (ListaCamposProveedores);
 rpc FiltrarProveedores (FiltroProveedor) returns (ListaProveedores);
+rpc ObtenerProductosConCategoria (Vacio) returns (ListaProductosConCategoria);
+rpc ObtenerProductosConProveedor (Vacio) returns (ListaProductosConProveedor);
+rpc ObtenerProductosConCategoriaYProveedor (Vacio) returns (ListaProductosConCategoriaYProveedor);
+rpc CrearProducto (ProductoMongo) returns (RespuestaCRUDProducto);
+rpc ConsultarProductos (ConsultaProductosRequest) returns (RespuestaConsultaProductos);
+rpc ActualizarProducto (ProductoMongo) returns (RespuestaCRUDProducto);
+rpc EliminarProducto (IdentificadorProducto) returns (RespuestaCRUDProducto);
+rpc ConsultarProductosPaginados (SolicitudPaginacionProductos) returns (RespuestaPaginadaProductos);
 
 }
 
@@ -69,4 +77,123 @@ message ListaProveedores {
 
 message FiltroProveedor {
   string Country = 1;
+}
+
+message CategoriaRelacionada {
+  int32 CategoryID = 1;
+  string CategoryName = 2;
+  string Description = 3;
+}
+
+message ProveedorRelacionado {
+  int32 SupplierID = 1;
+  string CompanyName = 2;
+  string ContactName = 3;
+  string ContactTitle = 4;
+  string Country = 5;
+  string City = 6;
+  string Address = 7;
+}
+
+message ProductoConCategoria {
+  int32 ProductID = 1;
+  string ProductName = 2;
+  int32 SupplierID = 3;
+  int32 CategoryID = 4;
+  string QuantityPerUnit = 5;
+  double UnitPrice = 6;
+  int32 UnitsInStock = 7;
+  int32 ReorderLevel = 8;
+  CategoriaRelacionada categoria = 9;
+}
+
+message ListaProductosConCategoria {
+  repeated ProductoConCategoria productos = 1;
+}
+
+message ProductoConProveedor {
+  int32 ProductID = 1;
+  string ProductName = 2;
+  int32 SupplierID = 3;
+  int32 CategoryID = 4;
+  string QuantityPerUnit = 5;
+  double UnitPrice = 6;
+  int32 UnitsInStock = 7;
+  int32 ReorderLevel = 8;
+  ProveedorRelacionado proveedor = 9;
+}
+
+message ListaProductosConProveedor {
+  repeated ProductoConProveedor productos = 1;
+}
+
+message ProductoConCategoriaYProveedor {
+  int32 ProductID = 1;
+  string ProductName = 2;
+  int32 SupplierID = 3;
+  int32 CategoryID = 4;
+  string QuantityPerUnit = 5;
+  double UnitPrice = 6;
+  int32 UnitsInStock = 7;
+  int32 ReorderLevel = 8;
+  CategoriaRelacionada categoria = 9;
+  ProveedorRelacionado proveedor = 10;
+}
+
+message ListaProductosConCategoriaYProveedor {
+  repeated ProductoConCategoriaYProveedor productos = 1;
+}
+
+message ProductoMongo {
+  int32 ProductID = 1;
+  string ProductName = 2;
+  int32 SupplierID = 3;
+  int32 CategoryID = 4;
+  string QuantityPerUnit = 5;
+  double UnitPrice = 6;
+  int32 UnitsInStock = 7;
+  int32 ReorderLevel = 8;
+}
+
+message ConsultaProductosRequest {
+  // ProductID = 0 consulta todos; un valor positivo consulta uno.
+  int32 ProductID = 1;
+}
+
+message IdentificadorProducto {
+  int32 ProductID = 1;
+}
+
+message RespuestaCRUDProducto {
+  bool exito = 1;
+  string mensaje = 2;
+  ProductoMongo producto = 3;
+}
+
+message RespuestaConsultaProductos {
+  bool exito = 1;
+  string mensaje = 2;
+  repeated ProductoMongo productos = 3;
+}
+
+enum OrdenProductos {
+  ASCENDENTE = 0;
+  DESCENDENTE = 1;
+}
+
+message SolicitudPaginacionProductos {
+  int32 pagina = 1;
+  int32 limite = 2;
+  string campoOrdenamiento = 3;
+  OrdenProductos orden = 4;
+}
+
+message RespuestaPaginadaProductos {
+  repeated ProductoMongo productos = 1;
+  int32 pagina = 2;
+  int32 limite = 3;
+  int64 totalRegistros = 4;
+  int64 totalPaginas = 5;
+  string campoOrdenamiento = 6;
+  string orden = 7;
 }

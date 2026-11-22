@@ -1,4 +1,4 @@
-# Implementación de gRPC con Node.js — Datos en memoria
+# Implementación de gRPC con Node.js y MongoDB
 
 ## 1. ¿Qué es gRPC?
 
@@ -12,6 +12,8 @@ A diferencia de una API REST tradicional, gRPC permite que un cliente invoque m�
 - JavaScript
 - gRPC (`@grpc/grpc-js`)
 - Protocol Buffers (`@grpc/proto-loader`)
+- Mongoose
+- MongoDB
 - Archivos JSON de Northwind
 
 ## 3. Instalación y configuración
@@ -26,7 +28,7 @@ Se definió el servicio `ProductoService` en el archivo `productos.proto`, indic
 
 El servidor gRPC se configuró para escuchar solicitudes en el puerto `50051`.
 
-Para las pruebas se utilizaron los archivos JSON originales de Northwind, cargados directamente en memoria.
+Las consultas gRPC existentes utilizan los archivos JSON originales de Northwind cargados en memoria. Además, estos mismos datos se pueden importar a MongoDB mediante Mongoose.
 
 ## 4. Consultas implementadas
 
@@ -88,25 +90,41 @@ La consulta utiliza `.filter()` para seleccionar los proveedores de Estados Unid
 
 La comparación del país se realiza sin distinguir entre letras mayúsculas y minúsculas.
 
-## 5. Manejo de datos en memoria
+## 5. Datos JSON y persistencia en MongoDB
 
-Para realizar las consultas se utilizaron tres archivos JSON de Northwind:
+Los datos originales de Northwind se encuentran en tres archivos:
 
 - `Products.json`: contiene los 77 productos.
-- `Categories.json`: contiene las categorías de los productos.
+- `Categories.json`: contiene las 8 categorías de los productos.
 - `Suppliers.json`: contiene los 29 proveedores.
 
-Los archivos se encuentran dentro de la carpeta `src/data/`.
+Los archivos están en `src/data/`. Los módulos `productos.js`, `categorias.js` y `proveedores.js` siguen cargándolos en memoria para las consultas existentes.
 
-Se crearon los módulos `productos.js`, `categorias.js` y `proveedores.js` para cargar estos archivos mediante `require()`.
+Los modelos Mongoose están en `src/models/` y conservan los nombres y tipos originales de los campos. Los productos mantienen `CategoryID` y `SupplierID` como identificadores numéricos de sus relaciones.
 
-Los registros se almacenan en memoria durante la ejecución del servidor y se consultan utilizando los métodos `.map()` y `.filter()` de JavaScript.
+La importación crea o reemplaza registros por su identificador (`ProductID`, `CategoryID` o `SupplierID`), por lo que puede ejecutarse nuevamente sin duplicarlos. Las colecciones son `productos`, `categorias` y `proveedores`.
 
-**No se utiliza MongoDB ni ninguna otra conexión a una base de datos.** Esta implementación corresponde únicamente a las consultas gRPC con datos en memoria.
+## 6. Importar los datos a MongoDB
 
-## 6. Ejecución del proyecto
+Configura `MONGO_URI` en el archivo `.env` ubicado en la carpeta `grpc`. No publiques ni compartas el valor de esa variable.
 
-Para ejecutar el proyecto, abrir una terminal dentro de la carpeta `grpc`.
+Desde PowerShell, abre una terminal en `grpc` y ejecuta:
+
+```powershell
+node src/scripts/importJson.js
+```
+
+La salida debe indicar los documentos procesados en cada colección y terminar con `Importación de JSON completada.` Para comprobar los conteos desde Node.js sin mostrar la URI:
+
+```powershell
+node -e "const mongoose = require('mongoose'); (async () => { try { await require('./src/config/database')(); const Producto = require('./src/models/Producto'); const Categoria = require('./src/models/Categoria'); const Proveedor = require('./src/models/Proveedor'); console.log(JSON.stringify({ productos: await Producto.countDocuments(), categorias: await Categoria.countDocuments(), proveedores: await Proveedor.countDocuments() })); } catch { console.error('Verificación fallida'); process.exitCode = 1; } finally { await mongoose.disconnect().catch(() => { console.error('No se pudo cerrar la conexión'); process.exitCode = 1; }); } })();"
+```
+
+Para los JSON actuales se esperan `77` productos, `8` categorías y `29` proveedores.
+
+## 7. Ejecución del proyecto
+
+Para iniciar el servidor gRPC, MongoDB debe estar disponible:
 
 ### Iniciar el servidor
 
@@ -126,7 +144,25 @@ node src/client.js
 
 El cliente realiza las cinco consultas gRPC y muestra los resultados mediante `console.table()`.
 
-## 7. Resultados de las pruebas
+## 8. Consultas avanzadas con Aggregation Pipeline
+
+Se añadieron tres RPC a `ProductoService`, implementadas en `src/services/productoAggregationService.js`. Cada consulta parte de `productos` y combina colecciones por sus identificadores numéricos:
+
+- `ObtenerProductosConCategoria`: une `productos.CategoryID` con `categorias.CategoryID`.
+- `ObtenerProductosConProveedor`: une `productos.SupplierID` con `proveedores.SupplierID`.
+- `ObtenerProductosConCategoriaYProveedor`: realiza ambas uniones.
+
+Cada pipeline utiliza `$lookup` para relacionar las colecciones, `$unwind` para convertir la relación coincidente en un objeto y `$project` para devolver los campos originales seleccionados. Las relaciones se muestran dentro de `categoria` y `proveedor`. Si la consulta no encuentra productos, responde con `productos: []`; si MongoDB falla, responde con un error gRPC `INTERNAL`.
+
+El cliente ejecuta las tres pruebas con:
+
+```powershell
+node src/client.js
+```
+
+Para demostrarlo, inicia primero el servidor (`node src/server.js`) con MongoDB disponible y los JSON importados. Después ejecuta el cliente. Por ejemplo, el producto `Chai` (`ProductID: 1`) debe mostrar `Beverages` (`CategoryID: 1`) en la consulta de categoría y `Exotic Liquids` (`SupplierID: 1`) en la de proveedor. La consulta combinada muestra ambos objetos.
+
+## 9. Resultados de las consultas en memoria
 
 Se realizaron pruebas de las cinco consultas utilizando los datos originales de Northwind.
 
@@ -140,10 +176,101 @@ Se realizaron pruebas de las cinco consultas utilizando los datos originales de 
 
 Todas las consultas se ejecutaron correctamente y mostraron los resultados esperados en la terminal.
 
-## 8. Alcance de la implementación
+## 10. CRUD gRPC sobre MongoDB
 
-Esta implementación corresponde a la configuración inicial de gRPC y al desarrollo de consultas utilizando datos en memoria.
+Se añadieron los métodos `CrearProducto`, `ConsultarProductos`, `ActualizarProducto` y `EliminarProducto` a `ProductoService`. Están implementados en `src/services/productoCrudService.js` y operan sobre el modelo Mongoose `Producto`.
 
-Se desarrollaron los servicios, mensajes y métodos necesarios para obtener registros, seleccionar campos específicos y aplicar filtros.
+- `CrearProducto` valida todos los campos del modelo y rechaza `ProductID` duplicados.
+- `ConsultarProductos` consulta MongoDB. Envía `ProductID: 0` para listar todos los productos o un identificador positivo para consultar uno.
+- `ActualizarProducto` recibe el producto completo, valida sus campos y actualiza el registro existente identificado por `ProductID`.
+- `EliminarProducto` elimina por `ProductID`.
 
-La conexión a una base de datos, las consultas JOIN, las operaciones CRUD, la paginación y la autenticación JWT corresponden a otras partes del proyecto y no forman parte de esta implementación.
+Las respuestas indican éxito y describen la operación. Los parámetros inválidos reciben `INVALID_ARGUMENT`, los identificadores duplicados `ALREADY_EXISTS`, los registros inexistentes `NOT_FOUND` y los fallos de MongoDB `INTERNAL`.
+
+### Ejecutar y demostrar el CRUD
+
+Con MongoDB disponible y `MONGO_URI` configurada, desde la carpeta `grpc`:
+
+1. Importa los datos de referencia si todavía no lo hiciste: `node src/scripts/importJson.js`.
+2. Inicia el servidor en una terminal: `node src/server.js`.
+3. En otra terminal ejecuta `node src/client.js`. El cliente crea un producto con un `ProductID` temporal, lo consulta, lo actualiza, vuelve a consultarlo y finalmente lo elimina. También confirma que consultar el producto eliminado responde `NOT_FOUND`.
+4. Ejecuta las pruebas automatizadas: `npm test`. Estas prueban el ciclo CRUD, duplicados, validación y productos inexistentes usando un almacenamiento simulado.
+
+Para documentar la demostración, captura: (1) el servidor conectado a MongoDB y escuchando en el puerto gRPC; (2) la respuesta exitosa de creación y la consulta del producto guardado, con su `ProductID`; (3) la respuesta de actualización y la consulta donde se ve el nombre o precio cambiado; (4) la eliminación exitosa y la respuesta `NOT_FOUND` al consultar el producto después de eliminarlo.
+
+## 11. Paginación y ordenamiento en MongoDB
+
+El RPC `ConsultarProductosPaginados` está implementado en `src/services/productoPaginacionService.js`. `pagina` empieza en 1, `limite` debe estar entre 1 y 100, y el resultado incluye `totalRegistros` y `totalPaginas`. Si no se especifica un campo, ordena por `ProductID`; si no se especifica dirección, utiliza `ASCENDENTE`.
+
+Los únicos campos permitidos para ordenar son `ProductID`, `ProductName`, `SupplierID`, `CategoryID`, `QuantityPerUnit`, `UnitPrice`, `UnitsInStock` y `ReorderLevel`. La dirección debe ser `ASCENDENTE` o `DESCENDENTE`. Para que la paginación sea estable cuando el campo elegido tiene valores repetidos, se utiliza `ProductID` como desempate ascendente.
+
+Ejemplo de solicitud:
+
+```js
+{
+  pagina: 1,
+  limite: 2,
+  campoOrdenamiento: "UnitPrice",
+  orden: "DESCENDENTE"
+}
+```
+
+Con los 77 productos importados, una respuesta de ejemplo es:
+
+```js
+{
+  productos: [
+    { ProductID: 38, ProductName: "Côte de Blaye", UnitPrice: 263.5 },
+    { ProductID: 29, ProductName: "Thüringer Rostbratwurst", UnitPrice: 123.79 }
+  ],
+  pagina: 1,
+  limite: 2,
+  totalRegistros: "77",
+  totalPaginas: "39",
+  campoOrdenamiento: "UnitPrice",
+  orden: "DESCENDENTE"
+}
+```
+
+Los campos `totalRegistros` y `totalPaginas` son `int64`; con la configuración del cliente se reciben como cadenas. Si la página está fuera del rango, `productos` será una lista vacía y los totales seguirán indicando el tamaño de la colección. Una colección vacía devuelve cero registros y cero páginas.
+
+El cliente prueba página 1 con `ProductID` ascendente y página 2 con `UnitPrice` descendente:
+
+```powershell
+node src/client.js
+```
+
+Para demostrarlo, inicia MongoDB y el servidor, ejecuta el cliente y muestra en la salida `pagina`, `limite`, `totalRegistros`, `totalPaginas`, el campo y la dirección aplicados junto con las filas ordenadas. Una solicitud con un campo fuera de la lista permitida o con límite mayor a 100 debe responder `INVALID_ARGUMENT`.
+
+## 12. Autenticación JWT en gRPC
+
+El servidor usa un interceptor de `@grpc/grpc-js` (`src/middleware/jwtAuthInterceptor.js`). Para iniciar, configura `JWT_SECRET` con un valor aleatorio privado y `JWT_EXPIRES_IN` con una duración aceptada por `jsonwebtoken`, por ejemplo `15m` o `1h`, en `grpc/.env`. No incluyas el secreto ni los tokens en capturas, commits o mensajes.
+
+`src/services/jwtService.js` exporta `generateToken(payload)` y `verifyToken(token)`. Los tokens se firman con HS256, incluyen la expiración configurada y se validan con el mismo algoritmo.
+
+### Métodos públicos y protegidos
+
+Son públicos las cinco consultas originales de Persona 1: `ObtenerProductos`, `ObtenerCampos`, `ObtenerCamposProveedores`, `FiltrarProductos` y `FiltrarProveedores`.
+
+Requieren un token Bearer las tres consultas avanzadas (`ObtenerProductosConCategoria`, `ObtenerProductosConProveedor`, `ObtenerProductosConCategoriaYProveedor`), los cuatro métodos CRUD y `ConsultarProductosPaginados`. Los métodos no incluidos en la lista pública también requieren autenticación.
+
+El cliente adjunta el token en la metadata gRPC `authorization` con el formato `Bearer <token>`. Sin token, con token inválido o expirado, el servidor responde `UNAUTHENTICATED` sin ejecutar el handler protegido.
+
+### Probar la autenticación
+
+```powershell
+npm test
+node src/server.js
+```
+
+En otra terminal, ejecuta:
+
+```powershell
+node src/client.js
+```
+
+El cliente muestra las pruebas `JWT SIN TOKEN`, `JWT INCORRECTO` y `JWT VÁLIDO`. La suite `jwtAuth.test.js` levanta un servidor gRPC real en un puerto local temporal y verifica que las solicitudes sin token, inválidas y expiradas sean rechazadas, que las públicas sigan respondiendo y que el token válido llegue al handler protegido. Las llamadas protegidas del cliente generan un token localmente para esta demostración; en producción, nunca distribuyas `JWT_SECRET` con un cliente: este debe obtener tokens de un servicio de autenticación confiable.
+
+## 13. Alcance pendiente
+
+Las cinco consultas gRPC originales siguen usando los módulos JSON en memoria. Las consultas avanzadas, CRUD, paginación, ordenamiento y autenticación JWT están implementadas.
